@@ -30,7 +30,7 @@ python3 scripts/package.py
 
 执行“导出 Agent 说明”，配置目录并确认预览。将导出的拆卡说明、原文路径和任务交给本地 Agent。完成后执行“检查 Agent 卡片包”，通过后打开入口。
 
-插件不启动 Agent、不连接模型。PDF 提取或 OCR 由外部工具完成。可选检索须另外安装 [原项目检索工具](https://github.com/xlthlx-7/carddesk/tree/main/search)，导出说明中的检索脚本路径属于该工具项目，不属于本插件仓库。
+这里是外部文件工作流，导出说明不启动批量任务；0.4.0 另有可选 Codex 聊天。PDF 提取或 OCR 由外部工具完成。可选检索须另外安装 [原项目检索工具](https://github.com/xlthlx-7/carddesk/tree/main/search)，导出说明中的检索脚本路径属于该工具项目，不属于本插件仓库。
 
 ## 升级与卸载
 
@@ -39,3 +39,11 @@ python3 scripts/package.py
 禁用不会删除状态。卸载时先备份 data.json，再禁用并删除插件目录，Markdown 笔记保留。恢复状态前先关闭或禁用插件，不修改运行中的 data.json。状态损坏或版本不支持时，插件会停止写入并提示；先备份，再修复或移走损坏文件。
 
 示例为原创说明材料。`p3-invalid-path.json` 与 `p3-missing-file.json` 故意用于失败测试；有效示例 `p3-example.json` 应为 0 错误、0 警告。
+
+## 0.4.0 开发版：聊天与转卡
+
+构建输出的版本为 0.4.0；现有 0.3.4 Release 保留。设置 → 接页 Carddesk 中填写已登录的 Codex CLI 绝对路径，再从当前卡片执行“向 Agent 提问当前卡片”。聊天与整理会调用模型服务，并消耗账户额度；选中的正文和会话历史会被发送。
+
+完整流程、兼容边界和失败恢复见 [聊天与转卡说明](CHAT_GUIDE.md)。导出 Agent 说明仍是独立文件工作流，不会启动批量外部任务。
+
+0.4.0 聊天和配置保存在 data.json。降回 0.3.4 前另存该文件，旧版本保存时会移除聊天字段。

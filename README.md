@@ -1,87 +1,12 @@
-# 接页 Obsidian 插件 0.3.4
+# 接页 Carddesk · Obsidian 插件
 
-当前版本 0.3.4（P3、检索策略 v2 配套说明）。保持 0.1.2 的 P0 嵌套布局与展开/收起行为，不接 AI。已支持阅读进度自动保存、命名路径保存恢复和文件变更处理。
+当前开发版 **0.4.0**：在卡片中渐进阅读，向 Codex 提问，再把有价值的回答整理为关联卡片。保持原有嵌套布局、内链原地展开、多分支、收起与返回上层。
 
-面向使用者的完整操作说明见 [安装与操作说明](docs/INSTALL.md)。
+[聊天与转卡操作说明](docs/CHAT_GUIDE.md) · [安装说明](docs/INSTALL.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
 
-## 构建
+## 构建与安装
 
-需要 Node.js 20+，在本目录运行：
-
-```sh
-npm ci
-npm test
-npm run build
-```
-
-产物位于 `dist/carddesk/`，包含 main.js、manifest.json、styles.css，三者必须一起安装。
-
-## 安装到测试 Vault
-
-1. 在 Obsidian 创建一个专用本地测试库，桌面版本至少 1.8.7。
-2. 在库目录创建 `.obsidian/plugins/carddesk/`，复制构建产物中的三个文件进去。macOS Finder 用 Command+Shift+. 显示隐藏目录。
-3. 将 `fixtures/vault/P0/` 整个目录复制到库根目录，得到 `P0/A.md` 等文件。
-4. 打开 Obsidian 设置 → 第三方插件，关闭受限模式，刷新列表或重启应用，启用“接页 Carddesk”。尚未发布到社区市场，不能在市场搜索安装。
-5. 用原生编辑器打开 `P0/A.md`，按 Command+P（Windows/Linux Ctrl+P），执行“接页 Carddesk: 以接页渐进阅读当前笔记”。命令只在活动视图是 Markdown 笔记时出现。
-6. 修改插件构建产物后，禁用再启用插件或重启 Obsidian。卸载时先禁用，再删除 carddesk 插件目录；笔记不受影响。
-
-## 阅读交互手工验证
-
-- A→B、A→C：在当前接页视图出现两张卡，不额外打开原生标签页。
-- B→D、C→D：两条分支可独立展开 D。
-- D→A：聚焦原有 A，不递归新增 A。
-- 再次点击 A→B 或子卡“收起”：移除 B 及其后代，C 保留。
-- “返回上层”：只聚焦上层，不删除分支。
-- Tab 到内链后 Enter：与鼠标普通点击一致。
-- Cmd/Ctrl 点击、外部网页、标题链接、附件维持宿主默认行为；缺失链接不被插件转为新卡。
-- 连续快速点击，或展开中关闭标签页后重开：不出现幽灵卡片；关闭视图后不应保留卡片渲染组件。
-- 原生编辑器里的链接行为保持原样。
-
-运行时核验必须在真实 Obsidian 完成。自动测试使用模拟宿主检查接管、祖先返回和生命周期，不能替代真实编辑器事件顺序/资源渲染验证。P2 支持进度恢复及文件变更刷新，不支持块级展开或附件卡片。
-
-官方 API 参考：https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts
-
-## P1 深层样例
-
-将 fixtures/vault/P1 复制到测试库根目录，打开 P1/层1.md 执行接页命令，可逐层展开到第六层。返回上层按钮聚焦父卡并保留分支；收起后聚焦父卡。材料相关验证记录仅保留本地。
-
-## P2：保存与恢复
-
-所有操作在命令面板（⌘P / Ctrl+P），没有新增顶部按钮：
-
-- “继续上次阅读”：恢复最后活动阅读视图的展开树、顺序与焦点。
-- “保存当前阅读路径”：输入名称；同名需输入“覆盖”确认。
-- “打开已保存的阅读路径”：搜索并选择命名快照，看到笔记最新正文。
-- “删除已保存的阅读路径”：输入“删除”确认，仅删除快照，不删笔记。
-- “重新关联缺失卡片”：仅在存在缺失卡时出现，选择缺失节点与目标文件。
-
-自动进度短延迟合并写入，命名快照独立保存。位置恢复到当前卡片，不保存正文的精确像素滚动位置。每个阅读视图状态独立，最后活动视图作为继续阅读入口。
-
-数据位于测试库或用户库 `.obsidian/plugins/carddesk/data.json`。禁用插件会保留该文件；删除插件目录前备份它才能保留快照。不要在插件运行时手动编辑。损坏或未知版本会阻止插件写入，并通知用户；先备份原文件，再修复或移走后重新启用插件。
-
-正文修改自动刷新且保留分支。运行中改名更新路径；带唯一 card_id 的卡片还支持在重载或外部移动后按身份重新定位。普通笔记无法定位时显示占位，可重新关联。外部移动不会由插件自动改写笔记正文内链。
-
-将 fixtures/vault/P2 复制到测试库根目录，打开 P2/入口.md 测试；验证报告不在公开源码范围中。
-
-## P3：本地 Agent 协作
-
-命令面板执行“导出 Agent 说明”，配置相对目录并预览确认。内置拆卡/关联检查说明导出到 Carddesk；修改过的说明不被覆盖，新版另存。把最终导出路径与具体原文交给本地 Codex / Claude Code，插件不运行 Agent。
-
-Agent 按说明写 Markdown 和 Carddesk/packages/*.json 后，执行“检查 Agent 卡片包”。校验只读，成功可直接“以接页打开入口”。来源字段和链接完整不等于内容已经事实核实。
-
-安装包中的 example-vault 或源码 fixtures/vault 包含 Cards/P3、Sources/P3、Carddesk/packages 和 Carddesk/reviews。复制到测试 Vault 后选择 p3-example.json 应得到 0 错误、0 警告；p3-invalid-path.json 与 p3-missing-file.json 是刻意保留的错误案例。P3 示例为原创说明材料，不是实际书籍的 AI 生成结果。
-
-协议见 [Agent 文件协议](docs/AGENT_CARD_PROTOCOL.md)；个人验证报告不随源码公开。插件包仍只需 main.js、manifest.json、styles.css，说明已内嵌在 main.js 中。
-
-## 可选的外部检索工具
-
-插件无需检索工具即可阅读和保存路径。需要本地 Agent 检索时，单独安装 [Carddesk 检索工具](https://github.com/xlthlx-7/carddesk/tree/main/search)；其 Node 22+、QMD 与模型依赖不属于本插件。
-
-内置三份说明均为 instruction_version=3。导出检索说明中的 `search/cli.mjs` 和模型下载脚本相对于配套项目根目录，不能在本插件仓库直接运行；请把配套工具的实际绝对路径交给 Agent。阅读器不会执行这些命令。
-
-## 独立项目与发布
-
-本仓库从 [Carddesk](https://github.com/xlthlx-7/carddesk) 的 `obsidian-plugin/` 拆出。插件 ID 仍为 `carddesk`，版本保持 0.3.4，现有阅读状态可继续使用。源码快照及拆分范围见 [来源记录](docs/PROVENANCE.md)。
+开发需要 Node.js 20+；Python 3 仅用于生成 ZIP。
 
 ```sh
 npm ci
@@ -90,10 +15,39 @@ npm run build
 python3 scripts/package.py
 ```
 
-生成 `dist/carddesk-plugin-0.3.4.zip` 和 `dist/carddesk-example-vault-0.3.4.zip`。插件 ZIP 的顶层是 `carddesk/`；示例 ZIP 解压到独立测试库根目录。示例包含刻意失败的校验案例，详见前文 P3 说明。
+将 `dist/carddesk/` 的 main.js、manifest.json、styles.css 复制到测试库 `.obsidian/plugins/carddesk/`，在 Obsidian 第三方插件设置中启用接页。尚未上架社区市场，最低 Obsidian 1.8.7。
 
-[安装、升级与卸载](docs/INSTALL.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
+将 `fixtures/vault/` 的内容复制到独立测试库根目录。打开 `P0/A.md`，执行“以接页渐进阅读当前笔记”；也可打开 `Chat/入口.md` 尝试聊天。
 
-## 下一版本
+## 阅读与路径
 
-[0.4.0 开发计划](docs/PLAN_0.4.0.md) · [待办](docs/TODO.md) · [测试与优化决策日志](docs/TEST_OPTIMIZATION_LOG.md)。计划围绕本地 Agent 协作，保持现有阅读布局与交互；当前运行版本仍为 0.3.4。
+- 点击整卡内链原地展开，再次点击或“收起”关闭分支。
+- 多条分支可以独立展开同一张卡，祖先链接返回已有卡，不无限递归。
+- “返回上层”聚焦父卡并保留分支。
+- Cmd/Ctrl 点击、标题/块链接、附件、外链、缺失链接沿用宿主行为。
+- 命令面板可继续上次阅读、命名保存/恢复/删除阅读路径，或重新关联缺失卡片。
+- 正文变化保留分支并刷新，改名更新路径；唯一 card_id 可帮助恢复移动后的身份。
+
+## Codex 聊天与关联卡片
+
+在设置 → 接页 Carddesk 填写本机已登录 Codex CLI 的绝对路径，配置新卡目录并保存。从笔记或接页执行“向 Agent 提问当前卡片”，在右侧聊天。默认只发送当前卡，可明确增加已展开卡片；本会话历史也会发送至模型服务。
+
+选取完整回复中的内容 → 整理为草稿 → 编辑和预览 → 确认创建卡片并关联。新卡标记为“对话补充，待核对”，在原卡末尾加入内链；点击后沿用渐进阅读。聊天不会自主修改笔记或自动检索。
+
+首版只支持 Codex CLI，实际验证版本 0.169.0-alpha.11.1 / macOS。模型服务需要联网和账户额度；阅读不依赖 CLI 或模型。完整边界、停止重试、上下文限额和登录方式见 [操作说明](docs/CHAT_GUIDE.md)。
+
+## 外部 Agent 文件协作
+
+现有“导出 Agent 说明”“检查 Agent 卡片包”继续保留。这条工作流由用户把导出路径和原文交给外部 Agent，插件只导出和校验，不执行其批量任务。
+
+[Agent 文件协议](docs/AGENT_CARD_PROTOCOL.md) · [可选外部检索工具](https://github.com/xlthlx-7/carddesk/tree/main/search)。检索脚本属于原项目，不包含在本插件中。
+
+有效示例 p3-example.json 应为 0 错误、0 警告；p3-invalid-path.json 和 p3-missing-file.json 是刻意失败案例。示例均为原创，不代表模型质量评测。
+
+## 数据与项目
+
+阅读状态、聊天和设置位于 `.obsidian/plugins/carddesk/data.json`。升级前备份；0.3.4 的阅读状态可继续读取。降回 0.3.4 会在保存时移除聊天字段，回退前另存该文件。卸载插件不删除笔记，但删除插件目录前应备份 data.json。
+
+项目从 [Carddesk](https://github.com/xlthlx-7/carddesk) 拆出，插件 ID 仍为 carddesk，不能在同一库同时安装两份。[来源记录](docs/PROVENANCE.md)。0.3.4 Release 保留，尚未发布 0.4.0 Release。
+
+[开发计划](docs/PLAN_0.4.0.md) · [待办](docs/TODO.md) · [测试决策日志](docs/TEST_OPTIMIZATION_LOG.md) · [开发版验证](docs/VALIDATION_0.4.0.md)

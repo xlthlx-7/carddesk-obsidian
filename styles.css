@@ -10,3 +10,12 @@
 .carddesk-reading .carddesk-children .carddesk-branch { background:var(--background-primary); }
 .carddesk-reading .carddesk-children .carddesk-children { grid-template-columns:minmax(0,1fr); }
 @media(max-width:650px) { .carddesk-reading .carddesk-children { grid-template-columns:minmax(0,1fr); } }
+
+/* Chat lives in its own sidebar; progressive reading styles above remain unchanged. */
+.carddesk-chat {padding:16px;overflow:auto;}
+.carddesk-chat textarea {width:100%;min-height:80px;margin:8px 0;}
+.carddesk-chat pre {white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-text);}
+.carddesk-chat-controls {display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
+.carddesk-chat-message {padding:12px 0;border-bottom:1px solid var(--background-modifier-border);}
+.carddesk-chat-message small,.carddesk-chat-muted {color:var(--text-muted);}
+.carddesk-chat-status {color:var(--text-accent);white-space:pre-wrap;}

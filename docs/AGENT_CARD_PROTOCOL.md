@@ -9,7 +9,7 @@
 3. 在本地 Agent 中提供 Vault 的实际路径，指定导出说明及具体任务。例如：“阅读 Carddesk/Agent拆卡说明.md，处理 Sources/book/source.md，输出到新的 Cards/book-v1/，不修改其他笔记。”
 4. Agent 完成后，在 Obsidian 执行“检查 Agent 卡片包”，选择 manifest。无错误时可打开入口阅读。
 
-插件不启动 Agent、不提供 Agent SDK/MCP 连接、不授予文件权限、不调用模型或嵌入服务。Agent 访问范围与实际执行授权由用户在 Agent 侧决定；配置说明不构成操作系统权限隔离。
+本节描述外部 Agent 文件工作流；导出和包校验不启动批量任务、不提供 SDK/MCP 连接、不授予目录访问权限。0.4.0 另提供可选 Codex 聊天，详见 CHAT_GUIDE.md。Agent 访问范围与实际执行授权由用户在 Agent 侧决定；配置说明不构成操作系统权限隔离。
 
 三份模板内置在 main.js 中：源码是 `resources/agent/split-cards.md` 、`inspect-relations.md` 与 `retrieval.md`，不依赖开发仓库文件存在。首次导出到 `Carddesk/Agent拆卡说明.md`、`Carddesk/Agent关联检查说明.md`、`Carddesk/Agent检索说明.md`；有差异时预览逐行差异并另存 版本后缀文件，不覆盖任何已有说明。内容完全一致则复用已有文件。后续任务应引用最新选定的说明路径，旧说明不会被 Agent 自动替换。
 

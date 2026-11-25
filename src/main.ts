@@ -1,3 +1,7 @@
+import {ChatView, CHAT_VIEW_TYPE} from './chat-view';
+import {CodexAgent} from './codex-agent';
+import {AgentState, defaultAgentState} from './chat-model';
+import {ChatSettingsTab} from './chat-settings';
 import {MarkdownView, Notice, Plugin, TFile} from 'obsidian';
 import {ReadingView, VIEW_TYPE} from './reading-view';
 import {InstructionModal, selectPackage} from './agent-tools';
@@ -6,9 +10,26 @@ import {ask, Choose} from './path-dialogs';
 
 export default class CarddeskPlugin extends Plugin {
  private store!:PathStore;
+ private agent!:AgentState;
  async onload():Promise<void>{
   this.store=new PathStore(data=>this.saveData(data),error=>new Notice('接页保存失败（原数据未主动覆盖）：'+String(error)));
   try{this.store.load(await this.loadData());}catch(error){this.store.blocked=true;new Notice('接页无法读取保存数据：'+String(error));}
+  this.agent=this.store.data.agent??defaultAgentState();
+  const persist=()=>this.store.setAgent(this.agent);
+  this.registerView(CHAT_VIEW_TYPE,leaf=>new ChatView(leaf,()=>this.agent,persist,new CodexAgent()));
+  this.addSettingTab(new ChatSettingsTab(this.app,this,()=>this.agent.settings,async settings=>{this.agent.settings=settings;await persist();}));
+  const openChat=async(primary='',choices:string[]=[])=>{
+   let leaf=this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
+   if(!leaf){leaf=this.app.workspace.getRightLeaf(false)!;if(!leaf)throw Error('无法打开聊天侧栏');await leaf.setViewState({type:CHAT_VIEW_TYPE,active:true});}
+   if(primary&&(leaf.view instanceof ChatView))leaf.view.setContext(primary,choices);
+   await this.app.workspace.revealLeaf(leaf);
+  };
+  this.addCommand({id:'open-agent-chat',name:'打开 Agent 聊天',callback:()=>{void openChat().catch(e=>new Notice(String(e)));}});
+  this.addCommand({id:'ask-agent-current-card',name:'向 Agent 提问当前卡片',checkCallback:checking=>{
+   const reading=this.app.workspace.getActiveViewOfType(ReadingView);const snapshot=reading?.snapshot();
+   const path=snapshot?.nodes.find(n=>n.nodeId===snapshot.activeNodeId)?.filePath??this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path;
+   if(!path)return false;if(!checking)void openChat(path,snapshot?.nodes.map(n=>n.filePath)??[path]).catch(e=>new Notice(String(e)));return true;
+  }});
   this.registerView(VIEW_TYPE,leaf=>{
    const view=new ReadingView(leaf,s=>{
     this.app.workspace.requestSaveLayout();
@@ -62,5 +83,5 @@ export default class CarddeskPlugin extends Plugin {
  }
  private async newView():Promise<ReadingView>{const leaf=this.app.workspace.getLeaf('tab');await leaf.setViewState({type:VIEW_TYPE,active:true});return leaf.view as ReadingView;}
  private async openSnapshot(s:Snapshot):Promise<void>{await (await this.newView()).restore(s);}
- onunload():void {this.app.workspace.detachLeavesOfType(VIEW_TYPE);void this.store.flush().catch(()=>{});}
+ onunload():void {this.app.workspace.detachLeavesOfType(CHAT_VIEW_TYPE);this.app.workspace.detachLeavesOfType(VIEW_TYPE);void this.store.flush().catch(()=>{});}
 }
