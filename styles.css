@@ -19,3 +19,8 @@
 .carddesk-chat-message {padding:12px 0;border-bottom:1px solid var(--background-modifier-border);}
 .carddesk-chat-message small,.carddesk-chat-muted {color:var(--text-muted);}
 .carddesk-chat-status {color:var(--text-accent);white-space:pre-wrap;}
+
+.carddesk-reading .carddesk-inline-editor textarea {width:100%;min-height:18rem;resize:vertical;font-family:var(--font-monospace);line-height:1.6;tab-size:2;}
+.carddesk-reading .carddesk-editor-actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.carddesk-reading .carddesk-inline-editor p {color:var(--text-muted);font-size:var(--font-ui-small);}
+.carddesk-reading .carddesk-body[hidden] {display:none;}

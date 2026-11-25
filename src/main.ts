@@ -3,7 +3,7 @@ import {ChatView, CHAT_VIEW_TYPE} from './chat-view';
 import {CodexAgent} from './codex-agent';
 import {AgentState, defaultAgentState} from './chat-model';
 import {ChatSettingsTab} from './chat-settings';
-import {MarkdownView, Notice, Plugin, TFile} from 'obsidian';
+import {MarkdownView, Modal, Notice, Plugin, TFile} from 'obsidian';
 import {ReadingView, VIEW_TYPE} from './reading-view';
 import {InstructionModal, selectPackage} from './agent-tools';
 import {PathStore, Snapshot} from './path-store';
@@ -35,7 +35,7 @@ export default class CarddeskPlugin extends Plugin {
    const view=new ReadingView(leaf,s=>{
     this.app.workspace.requestSaveLayout();
     if(this.app.workspace.getActiveViewOfType(ReadingView)===view)this.store.update(s);
-   },{discuss:(file,choices)=>openChat(file.path,choices)});return view;
+   },{discuss:(file,choices)=>openChat(file.path,choices),persistDraft:d=>this.store.setDraft(d),discardDraft:id=>this.store.deleteDraft(id)});return view;
   });
   const safe=(work:()=>Promise<unknown>)=>{void work().catch(error=>new Notice('接页：'+String(error)));};
   this.addCommand({id:'open-progressive-reading',name:'以接页渐进阅读当前笔记',checkCallback:checking=>{
@@ -70,6 +70,18 @@ export default class CarddeskPlugin extends Plugin {
      const f=this.app.vault.getAbstractFileByPath(path);if(f instanceof TFile)await view!.relink(id,f);
     })).open();
    }).open();return true;
+  }});
+  this.addCommand({id:'restore-card-edit',name:'恢复未保存的卡片编辑',callback:()=>{
+   const drafts=this.store.data.drafts??[];if(!drafts.length){new Notice('没有未保存的编辑草稿');return;}
+   new Choose(this.app,drafts.map(d=>({id:d.id,name:d.path+' · '+d.id.slice(0,8)})),id=>safe(async()=>{
+    const draft=this.store.data.drafts?.find(d=>d.id===id);if(!draft)return;
+    for(const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE))if(leaf.view instanceof ReadingView&&leaf.view.focusEdit(draft.id)){await this.app.workspace.revealLeaf(leaf);return;}
+    const file=this.app.vault.getAbstractFileByPath(draft.path);
+    if(!(file instanceof TFile)){
+     const modal=new Modal(this.app);modal.onOpen=()=>{modal.contentEl.createEl('h3',{text:'原卡不存在，草稿保留'});modal.contentEl.createEl('p',{text:draft.path+'：复制草稿后可手动另存为新笔记。'});const text=modal.contentEl.createEl('textarea');text.value=draft.text;text.readOnly=true;text.rows=16;text.style.width='100%';};modal.open();return;
+    }
+    const view=await this.newView();await view.openRoot(file);await view.restoreEdit(draft);
+   }),'选择要恢复的编辑草稿').open();
   }});
   this.addCommand({id:'migrate-card-metadata',name:'迁移当前卡片元信息（预览）',checkCallback:checking=>{
    const view=this.app.workspace.getActiveViewOfType(ReadingView);const s=view?.snapshot();

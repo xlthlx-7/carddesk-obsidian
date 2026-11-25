@@ -1,7 +1,8 @@
+import {EditDraft, validateEditDraft} from './edit-drafts';
 import {AgentState, validateAgentState} from './chat-model';
 export interface PathNode { nodeId:string; parentId:string|null; filePath:string; cardId?:string; }
 export interface Snapshot { schemaVersion:1; id:string; name:string; rootNodeId:string; activeNodeId:string; nodes:PathNode[]; }
-export interface PathData {schemaVersion:1; lastSession:Snapshot|null; paths:Snapshot[]; agent?:AgentState;}
+export interface PathData {schemaVersion:1; lastSession:Snapshot|null; paths:Snapshot[]; agent?:AgentState; drafts?:EditDraft[];}
 const clone=<T>(v:T):T=>JSON.parse(JSON.stringify(v));
 export function validateSnapshot(value:unknown):Snapshot {
  const s=value as Snapshot;
@@ -26,10 +27,17 @@ export class PathStore {
   try {
    const d=raw as PathData;if(d.schemaVersion!==1 || !Array.isArray(d.paths))throw new Error('保存数据版本无效');
    this.data={schemaVersion:1,lastSession:d.lastSession===null?null:validateSnapshot(d.lastSession),paths:d.paths.map(validateSnapshot)};
+   if(d.drafts!==undefined){if(!Array.isArray(d.drafts)||d.drafts.length>20)throw Error('编辑草稿数据无效');this.data.drafts=d.drafts.map(validateEditDraft);if(new Set(this.data.drafts.map(v=>v.id)).size!==this.data.drafts.length)throw Error('草稿 ID 重复');}
    if(d.agent!==undefined){this.data.agent=validateAgentState(d.agent);for(const s of this.data.agent.sessions)for(const m of s.messages)if(m.status==='pending')m.status='interrupted';}
    if(new Set(this.data.paths.map(p=>p.id)).size!==this.data.paths.length)throw new Error('快照 ID 重复');
   } catch(e){this.blocked=true;this.failed(e);}
  }
+ async setDraft(raw:EditDraft):Promise<void>{
+  if(this.blocked)throw Error('原保存数据不可写');const draft=validateEditDraft(raw),drafts=this.data.drafts??[];
+  const index=drafts.findIndex(d=>d.id===draft.id);if(index<0){if(drafts.length>=20)throw Error('未保存草稿已达 20 份，请先恢复或放弃旧草稿');drafts.push(draft);}else drafts[index]=draft;
+  this.data.drafts=drafts;await this.flush();
+ }
+ async deleteDraft(id:string):Promise<void>{if(this.blocked)throw Error('原保存数据不可写');this.data.drafts=(this.data.drafts??[]).filter(d=>d.id!==id);await this.flush();}
  async setAgent(agent:AgentState):Promise<void>{if(this.blocked)throw new Error('原保存数据不可写');this.data.agent=validateAgentState(agent);await this.flush();}
  update(s:Snapshot):void {if(this.blocked)return;this.data.lastSession=validateSnapshot(s);clearTimeout(this.timer);this.timer=setTimeout(()=>{void this.flush().catch(()=>{});},250);}
  async save(s:Snapshot):Promise<void>{if(this.blocked)throw new Error('原保存数据损坏或版本未知，已阻止覆盖');s=validateSnapshot(s);const i=this.data.paths.findIndex(p=>p.id===s.id);if(i<0)this.data.paths.push(s);else this.data.paths[i]=s;await this.flush();}

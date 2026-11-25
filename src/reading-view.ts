@@ -1,3 +1,5 @@
+import {InlineEditor} from './inline-editor';
+import {EditDraft} from './edit-drafts';
 import {readingMarkdown} from './card-metadata';
 import {Component, getLinkpath, ItemView, MarkdownRenderer, Notice, TFile, WorkspaceLeaf} from 'obsidian';
 import {internalLink} from './link-events';
@@ -20,15 +22,18 @@ interface ReadingNode {
   component: Component;
   disposed: boolean;
   pending: Set<string>;
+  editor?:InlineEditor;
+  editing?:boolean;
 }
 
-export interface ReadingActions {edit?:(file:TFile)=>Promise<void>;discuss:(file:TFile,choices:string[])=>Promise<void>;}
+export interface ReadingActions {persistDraft?:(draft:EditDraft)=>Promise<void>; discardDraft?:(id:string)=>Promise<void>;discuss:(file:TFile,choices:string[])=>Promise<void>;}
 export class ReadingView extends ItemView {
   private root: ReadingNode | null = null;
   private generation = 0;
   private tree = new ReadingTree();
   private rendered = new Map<number, ReadingNode>();
   private get count(): number { return this.tree.nodes.size; }
+  private draftWrites=new Set<Promise<void>>();
   private rootPath = '';
   private active: ReadingNode | null = null;
   private restoring = false;
@@ -60,10 +65,32 @@ export class ReadingView extends ItemView {
     }
   }
 
-  private async editNative(file:TFile):Promise<void>{
-    const leaf=this.app.workspace.getLeaf('tab');
-    await leaf.openFile(file,{active:true,state:{mode:'source',source:true}});
+  private async editInline(node:ReadingNode,recovery?:EditDraft):Promise<void>{
+    if(node.disposed||node.missing)return;if(node.editor){node.editor.focus();return;}if(node.editing)return;
+    node.editing=true;const generation=this.generation;
+    try{
+      const path=node.file.path;
+      if(node.file.stat?.size>1024*1024)throw Error('卡片超过 1 MiB，请在原生编辑器处理');
+      const text=await this.app.vault.read(node.file);
+      if(node.disposed||generation!==this.generation)return;
+      if(path!==node.file.path)throw Error('读取期间文件已移动，请重试');
+      const draft=recovery??{id:crypto.randomUUID(),path,base:text,text};
+      if(draft.path!==path)throw Error('草稿与卡片路径不符');
+      await this.actions?.persistDraft?.(draft);
+      if(node.disposed||generation!==this.generation){if(!recovery)await this.actions?.discardDraft?.(draft.id);return;}
+      const host=node.section.createDiv();node.body.before(host);node.body.hidden=true;
+      this.active=node;this.emit();
+      node.editor=new InlineEditor(this.app,host,draft,{
+        file:()=>node.disposed||node.missing?null:node.file,
+        persist:d=>this.actions?.persistDraft?.(d)??Promise.resolve(),
+        discard:id=>this.actions?.discardDraft?.(id)??Promise.resolve(),
+        close:()=>{node.editor=undefined;node.body.hidden=false;},
+        saved:async()=>{if(!node.disposed){await this.render(node,this.generation);this.focus(node);}}
+      });
+    }finally{node.editing=false;}
   }
+  focusEdit(id:string):boolean {for(const node of this.rendered.values())if(node.editor?.id===id){this.active=node;this.emit();node.editor.focus();return true;}return false;}
+  async restoreEdit(draft:EditDraft):Promise<void>{if(!this.root||this.root.file.path!==draft.path)throw Error('请先打开草稿对应卡片');await this.editInline(this.root,draft);}
 
   private focus(node: ReadingNode): void {
     if (node.disposed) return;
@@ -81,11 +108,12 @@ export class ReadingView extends ItemView {
     const edit = header.createEl('button', {text:'编辑'});
     edit.addEventListener('click', () => {
       if(node.disposed||node.missing)return;
-      void (this.actions?.edit?.(node.file)??this.editNative(node.file)).catch(error=>new Notice('编辑失败：'+String(error)));
+      void this.editInline(node).catch(error=>new Notice('编辑失败：'+String(error)));
     });
     const discuss = header.createEl('button', {text:'与 Agent 讨论'});
     discuss.addEventListener('click', () => {
       if(node.disposed||node.missing)return;
+      if(node.editor||node.editing){new Notice('请先保存或取消当前编辑，再与 Agent 讨论');return;}
       const choices=[...new Set([...this.rendered.values()].filter(n=>!n.missing&&!n.disposed).map(n=>n.file.path))];
       if(!this.actions){new Notice('聊天入口尚未就绪');return;}
       void this.actions.discuss(node.file,choices).catch(error=>new Notice('打开聊天失败：'+String(error)));
@@ -184,6 +212,7 @@ export class ReadingView extends ItemView {
   private remove(node: ReadingNode): void {
     if (node.disposed) return;
     node.disposed = true;
+    if(node.editor){const pending=node.editor.dispose();this.draftWrites.add(pending);void pending.finally(()=>this.draftWrites.delete(pending));node.editor=undefined;}
     for (const child of [...node.children]) this.remove(child);
     this.removeChild(node.component);
     node.body.empty();
@@ -196,7 +225,7 @@ export class ReadingView extends ItemView {
     }
   }
   private clear(): void { if (this.root) this.remove(this.root); this.root = null; }
-  async onClose(): Promise<void> { this.emit(); ++this.generation; this.clear(); this.contentEl.empty(); }
+  async onClose(): Promise<void> { this.emit(); ++this.generation; this.clear(); this.contentEl.empty();await Promise.allSettled([...this.draftWrites]); }
   private cardId(file:TFile):string|undefined {
     const id=this.app.metadataCache.getFileCache?.(file)?.frontmatter?.card_id;
     return typeof id==='string' && id ? id : undefined;
@@ -248,8 +277,9 @@ export class ReadingView extends ItemView {
           if(candidate){node.file=candidate;node.state.path=candidate.path;node.missing=false;recovered=true;node.section.querySelector('h2,h3')!.textContent=candidate.basename;}
         }
         if(!recovered && node.state.path!==path && !(kind==='delete' && node.state.path.startsWith(path+'/')))continue;
+        node.editor?.changed();
         if(kind==='delete')node.missing=true;
-        else {const f=this.resolve(node.state.path,node.cardId);node.missing=!f;if(f)node.file=f;}
+        else {const current=this.app.vault.getAbstractFileByPath(node.state.path);const f=kind==='modify'&&!node.missing&&current===node.file?node.file:this.resolve(node.state.path,node.cardId);node.missing=!f;if(f){node.file=f;node.cardId=this.cardId(f);}}
         try {await this.render(node,generation);}catch(error){new Notice(String(error));}
       }
       if(generation===this.generation){for(const node of this.rendered.values()){this.sync(node);this.updateWarning(node);}this.emit();}

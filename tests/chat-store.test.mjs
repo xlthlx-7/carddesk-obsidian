@@ -9,3 +9,6 @@ test('0.3.4 reading data round trips while chat and reading writes are serialize
  const loaded=new PathStore(async()=>{},()=>{});loaded.load(writes.at(-1));assert.equal(loaded.data.agent.sessions[0].messages[0].status,'interrupted');assert.deepEqual(loaded.data.paths,[snapshot]);
 });
 test('damaged/unknown storage blocks chat writes as well as reading writes',async()=>{let writes=0;const store=new PathStore(async()=>writes++,()=>{});store.load({schemaVersion:99});await assert.rejects(store.setAgent(agent()));assert.equal(writes,0);});
+test('edit drafts persist alongside chat and snapshots and can be removed without changing either',async()=>{
+ let saved;const store=new PathStore(async d=>saved=d,()=>{});store.load({schemaVersion:1,lastSession:snapshot,paths:[snapshot],agent:agent()});const draft={id:'edit',path:'原卡.md',base:'原文',text:'未保存'};await store.setDraft(draft);store.update(snapshot);await store.flush();const restored=new PathStore(async()=>{},()=>{});restored.load(saved);assert.deepEqual(restored.data.drafts,[draft]);assert.equal(restored.data.paths[0].name,'旧路径');assert.equal(restored.data.agent.sessions[0].title,'对话');await store.deleteDraft('edit');assert.deepEqual(saved.drafts,[]);assert.equal(saved.paths.length,1);await assert.rejects(store.setDraft({...draft,path:'../secret.md'}));
+});
