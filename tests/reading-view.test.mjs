@@ -17,7 +17,7 @@ globalThis.MockFile=TFile;
 export class Notice {constructor(message){globalThis.notices.push(message);}}
 export const getLinkpath=s=>s.split('#')[0];
 export class MarkdownRenderer {static async render(app,md,el,source,component){
- app.renders.push(source);
+ app.renders.push(source);app.markdown=md;
  if(app.renderGate) await app.renderGate;
  for(const ref of md.split(',')){const a=document.createElement('a');a.className='internal-link';a.dataset.href=ref;a.href='#';a.textContent=ref;el.append(a);}
  // Simulate the renderer's native handler: capture on card must suppress it.
@@ -126,4 +126,12 @@ test('P4 two views keep independent trees and closing one leaves the other usabl
  await view.onClose();assert.equal(view.count,0);assert.equal(other.count,2);
  click(other.root.children[0],'D');await settle();assert.equal(other.count,3);
  await other.onClose();assert.equal(other.count,0);
+});
+
+test('per-card actions target the clicked card even when another branch owns focus',async()=>{
+ const {view,files,app,click}=setup();const edited=[],discussed=[];view.actions={edit:async f=>edited.push(f.path),discuss:async(f,choices)=>discussed.push({path:f.path,choices})};await view.openRoot(files.A);click(view.root,'B');await settle();click(view.root,'C');await settle();assert.equal(view.snapshot().nodes.find(n=>n.nodeId===view.snapshot().activeNodeId).filePath,files.C.path);
+ const b=view.root.children[0];const buttons=[...b.section.querySelectorAll(':scope > .carddesk-heading > button')];buttons.find(v=>v.textContent==='编辑').click();buttons.find(v=>v.textContent==='与 Agent 讨论').click();await settle();assert.deepEqual(edited,[files.B.path]);assert.equal(discussed[0].path,files.B.path);assert.deepEqual(discussed[0].choices,[files.A.path,files.B.path,files.C.path]);assert.equal(view.count,3);assert.equal(view.contentEl.querySelector('nav'),null);assert.ok(!buttons.some(b=>b.textContent==='原生打开'));await view.onClose();
+});
+test('native edit requests source mode in another tab and reading presentation excludes metadata only',async()=>{
+ const {view,files,app}=setup();const edits=[];app.workspace.getLeaf=type=>({openFile:async(f,state)=>edits.push({type,path:f.path,state})});app.vault.cachedRead=async()=> '---\ncard_id: stable\nsources: [source]\n---\n# 标题\n> Sources: 来源\n> Raw: 原文.md\n> Updated: 2026-11-25\n\n> 正常引用\n正文';await view.openRoot(files.A);assert.ok(!app.markdown.includes('card_id'));assert.ok(!app.markdown.includes('Sources:'));assert.ok(app.markdown.includes('> 正常引用'));view.root.section.querySelector('button').click();await settle();assert.equal(edits[0].type,'tab');assert.equal(edits[0].path,files.A.path);assert.deepEqual(edits[0].state,{active:true,state:{mode:'source',source:true}});assert.equal(view.count,1);await view.onClose();
 });

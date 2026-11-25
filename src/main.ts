@@ -1,3 +1,4 @@
+import {previewMetadataMigration} from './metadata-migration';
 import {ChatView, CHAT_VIEW_TYPE} from './chat-view';
 import {CodexAgent} from './codex-agent';
 import {AgentState, defaultAgentState} from './chat-model';
@@ -34,7 +35,7 @@ export default class CarddeskPlugin extends Plugin {
    const view=new ReadingView(leaf,s=>{
     this.app.workspace.requestSaveLayout();
     if(this.app.workspace.getActiveViewOfType(ReadingView)===view)this.store.update(s);
-   });return view;
+   },{discuss:(file,choices)=>openChat(file.path,choices)});return view;
   });
   const safe=(work:()=>Promise<unknown>)=>{void work().catch(error=>new Notice('接页：'+String(error)));};
   this.addCommand({id:'open-progressive-reading',name:'以接页渐进阅读当前笔记',checkCallback:checking=>{
@@ -69,6 +70,12 @@ export default class CarddeskPlugin extends Plugin {
      const f=this.app.vault.getAbstractFileByPath(path);if(f instanceof TFile)await view!.relink(id,f);
     })).open();
    }).open();return true;
+  }});
+  this.addCommand({id:'migrate-card-metadata',name:'迁移当前卡片元信息（预览）',checkCallback:checking=>{
+   const view=this.app.workspace.getActiveViewOfType(ReadingView);const s=view?.snapshot();
+   const path=s?.nodes.find(n=>n.nodeId===s.activeNodeId)?.filePath??this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path;
+   const file=path?this.app.vault.getAbstractFileByPath(path):null;if(!(file instanceof TFile))return false;
+   if(!checking)safe(()=>previewMetadataMigration(this.app,file));return true;
   }});
   this.addCommand({id:'export-agent-instructions',name:'导出 Agent 说明',callback:()=>new InstructionModal(this.app).open()});
   this.addCommand({id:'check-agent-package',name:'检查 Agent 卡片包',callback:()=>selectPackage(this.app,async path=>{const file=this.app.vault.getAbstractFileByPath(path);if(!(file instanceof TFile))throw new Error('入口不存在');await (await this.newView()).openRoot(file);})});

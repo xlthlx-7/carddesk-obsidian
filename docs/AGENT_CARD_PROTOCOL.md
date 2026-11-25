@@ -1,6 +1,6 @@
 # 接页 Agent 文件协议 v1
 
-版本：protocol_version=1，instruction_version=3。插件版本：0.3.4。
+版本：protocol_version=1，instruction_version=4。插件版本：0.3.4。
 
 ## 用户操作
 
@@ -81,3 +81,7 @@ entry 必须属于 files。files 只列本次产出的 .md 卡片，sources 列�
 ## 示例
 
 `fixtures/vault/` 提供原创示例来源、10 张新卡、1 张可引用旧卡、有效 manifest、两份故障 manifest 及关联报告。复制到测试 Vault 后可直接校验。原始示例不是某本真实书籍的 AI 拆解结果，不代表已完成模型质量测评。
+
+## 元信息呈现（0.4.0 增量）
+
+sources、raw、updated 放在顶部 YAML 中，来源身份字段继续保留。接页阅读隐藏顶部属性与标题后标准旧三行，编辑显示完整文件；普通引用保留。单卡迁移需预览确认并生成 .md.bak 备份，不执行批量转换。

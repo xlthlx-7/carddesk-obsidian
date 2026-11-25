@@ -1,3 +1,4 @@
+import {readingMarkdown} from './card-metadata';
 import {Component, getLinkpath, ItemView, MarkdownRenderer, Notice, TFile, WorkspaceLeaf} from 'obsidian';
 import {internalLink} from './link-events';
 import {Snapshot, validateSnapshot} from './path-store';
@@ -21,6 +22,7 @@ interface ReadingNode {
   pending: Set<string>;
 }
 
+export interface ReadingActions {edit?:(file:TFile)=>Promise<void>;discuss:(file:TFile,choices:string[])=>Promise<void>;}
 export class ReadingView extends ItemView {
   private root: ReadingNode | null = null;
   private generation = 0;
@@ -34,7 +36,7 @@ export class ReadingView extends ItemView {
   getViewType(): string { return VIEW_TYPE; }
   getDisplayText(): string { return '接页 · ' + (this.root?.file.basename ?? '渐进阅读'); }
   getIcon(): string { return 'book-open'; }
-  constructor(leaf: WorkspaceLeaf, private changed?: (s:Snapshot)=>void) { super(leaf); }
+  constructor(leaf: WorkspaceLeaf, private changed?: (s:Snapshot)=>void, private actions?:ReadingActions) { super(leaf); }
 
   async onOpen(): Promise<void> {
     this.contentEl.addClass('carddesk-reading');
@@ -58,6 +60,11 @@ export class ReadingView extends ItemView {
     }
   }
 
+  private async editNative(file:TFile):Promise<void>{
+    const leaf=this.app.workspace.getLeaf('tab');
+    await leaf.openFile(file,{active:true,state:{mode:'source',source:true}});
+  }
+
   private focus(node: ReadingNode): void {
     if (node.disposed) return;
     this.active=node; this.emit();
@@ -71,8 +78,18 @@ export class ReadingView extends ItemView {
     section.tabIndex = -1;
     const header = section.createDiv({cls:'carddesk-heading'});
     header.createEl(parent ? 'h3' : 'h2', {text:file.basename});
-    const open = header.createEl('button', {text:'原生打开'});
-    open.addEventListener('click', () => { if(!node.missing) void this.app.workspace.openLinkText(node.file.path, '', true); });
+    const edit = header.createEl('button', {text:'编辑'});
+    edit.addEventListener('click', () => {
+      if(node.disposed||node.missing)return;
+      void (this.actions?.edit?.(node.file)??this.editNative(node.file)).catch(error=>new Notice('编辑失败：'+String(error)));
+    });
+    const discuss = header.createEl('button', {text:'与 Agent 讨论'});
+    discuss.addEventListener('click', () => {
+      if(node.disposed||node.missing)return;
+      const choices=[...new Set([...this.rendered.values()].filter(n=>!n.missing&&!n.disposed).map(n=>n.file.path))];
+      if(!this.actions){new Notice('聊天入口尚未就绪');return;}
+      void this.actions.discuss(node.file,choices).catch(error=>new Notice('打开聊天失败：'+String(error)));
+    });
     const body = section.createDiv({cls:'markdown-rendered carddesk-body'});
     const panel = section.createDiv({cls:'carddesk-children'});
     const component = this.addChild(new Component());
@@ -116,7 +133,7 @@ export class ReadingView extends ItemView {
       if (!alive()) return;
       rendering=node.component.addChild(new Component());
       const staging=node.body.ownerDocument.createElement('div');
-      await MarkdownRenderer.render(this.app, markdown, staging, node.file.path, rendering);
+      await MarkdownRenderer.render(this.app, readingMarkdown(markdown), staging, node.file.path, rendering);
       if (!alive()) {node.component.removeChild(rendering);return;}
       if(node.renderComponent)node.component.removeChild(node.renderComponent);
       node.renderComponent=rendering;

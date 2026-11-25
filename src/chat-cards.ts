@@ -1,7 +1,8 @@
+import {localDate} from './card-metadata';
 import {App, TFile, TFolder} from 'obsidian';
 import {DraftContent} from './chat-model';
 import {safePath} from './protocol-validator';
-export interface CardDraft extends DraftContent {id:string;sessionId:string;messageId:string;sourcePath:string;expectedSource:string;targetPath:string;}
+export interface CardDraft extends DraftContent {id:string;sessionId:string;messageId:string;sourcePath:string;expectedSource:string;targetPath:string;createdDate?:string;}
 function validate(d:CardDraft):void {
  if(!safePath(d.sourcePath)||!d.sourcePath.endsWith('.md')||!safePath(d.targetPath)||!d.targetPath.endsWith('.md')||d.targetPath===d.sourcePath)throw Error('草稿路径无效');
  for(const value of [d.id,d.sessionId,d.messageId])if(!/^[a-zA-Z0-9-]+$/.test(value))throw Error('草稿标识无效');
@@ -9,7 +10,7 @@ function validate(d:CardDraft):void {
 }
 export function draftText(d:CardDraft):string {
  validate(d);
- return `---\ncarddesk_schema: 1\ncard_id: ${JSON.stringify('chat-'+d.id)}\ncard_role: explanation\nsource_path: ${JSON.stringify(d.sourcePath)}\nsource_locator: ${JSON.stringify('对话补充，非原文证据')}\ncarddesk_origin: conversation\nverification_status: unverified\nchat_session_id: ${JSON.stringify(d.sessionId)}\nchat_message_id: ${JSON.stringify(d.messageId)}\n---\n# ${d.title.trim()}\n\n> 对话补充，待核对。下方内容不代表原卡来源已支持这些结论。\n\n${d.body.trim()}\n\n相关阅读：[[${d.sourcePath.slice(0,-3)}|回到提问卡片]]\n`;
+ return `---\ncarddesk_schema: 1\nsources: ["Codex 对话补充（待核对）"]\nraw: ${JSON.stringify("[["+d.sourcePath.slice(0,-3)+"]]")}\nupdated: ${JSON.stringify(d.createdDate??localDate())}\ncard_id: ${JSON.stringify('chat-'+d.id)}\ncard_role: explanation\nsource_path: ${JSON.stringify(d.sourcePath)}\nsource_locator: ${JSON.stringify('对话补充，非原文证据')}\ncarddesk_origin: conversation\nverification_status: unverified\nchat_session_id: ${JSON.stringify(d.sessionId)}\nchat_message_id: ${JSON.stringify(d.messageId)}\n---\n# ${d.title.trim()}\n\n> 对话补充，待核对。下方内容不代表原卡来源已支持这些结论。\n\n${d.body.trim()}\n\n相关阅读：[[${d.sourcePath.slice(0,-3)}|回到提问卡片]]\n`;
 }
 export function draftLink(d:CardDraft):string {validate(d);return `[[${d.targetPath.slice(0,-3)}|${d.linkText.trim()}]] <!-- carddesk-chat:${d.id} -->`;}
 export async function commitDraft(app:App,d:CardDraft):Promise<string>{

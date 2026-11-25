@@ -1,5 +1,5 @@
 ---
-instruction_version: 3
+instruction_version: 4
 protocol_version: 1
 search_protocol_version: 1
 ---
