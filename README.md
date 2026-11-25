@@ -93,3 +93,7 @@ python3 scripts/package.py
 生成 `dist/carddesk-plugin-0.3.4.zip` 和 `dist/carddesk-example-vault-0.3.4.zip`。插件 ZIP 的顶层是 `carddesk/`；示例 ZIP 解压到独立测试库根目录。示例包含刻意失败的校验案例，详见前文 P3 说明。
 
 [安装、升级与卸载](docs/INSTALL.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
+
+## 下一版本
+
+[0.4.0 开发计划](docs/PLAN_0.4.0.md) · [待办](docs/TODO.md) · [测试与优化决策日志](docs/TEST_OPTIMIZATION_LOG.md)。计划围绕本地 Agent 协作，保持现有阅读布局与交互；当前运行版本仍为 0.3.4。
