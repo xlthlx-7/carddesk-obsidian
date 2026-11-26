@@ -1,7 +1,7 @@
 import {InlineEditor} from './inline-editor';
 import {EditDraft} from './edit-drafts';
 import {readingMarkdown} from './card-metadata';
-import {Component, getLinkpath, ItemView, MarkdownRenderer, Notice, TFile, WorkspaceLeaf} from 'obsidian';
+import {Component, getLinkpath, ItemView, MarkdownRenderer, Notice, setIcon, setTooltip, TFile, WorkspaceLeaf} from 'obsidian';
 import {internalLink} from './link-events';
 import {Snapshot, validateSnapshot} from './path-store';
 import {ReadingTree, TreeNode} from './reading-tree';
@@ -105,12 +105,13 @@ export class ReadingView extends ItemView {
     section.tabIndex = -1;
     const header = section.createDiv({cls:'carddesk-heading'});
     header.createEl(parent ? 'h3' : 'h2', {text:file.basename});
-    const edit = header.createEl('button', {text:'编辑'});
+    const iconButton=(label:string,icon:string)=>{const button=header.createEl('button',{cls:'clickable-icon carddesk-card-action'});button.setAttribute('aria-label',label);setIcon(button,icon);setTooltip(button,label);return button;};
+    const edit = iconButton('编辑','pencil');
     edit.addEventListener('click', () => {
       if(node.disposed||node.missing)return;
       void this.editInline(node).catch(error=>new Notice('编辑失败：'+String(error)));
     });
-    const discuss = header.createEl('button', {text:'与 Agent 讨论'});
+    const discuss = iconButton('与 Agent 讨论','messages-square');
     discuss.addEventListener('click', () => {
       if(node.disposed||node.missing)return;
       if(node.editor||node.editing){new Notice('请先保存或取消当前编辑，再与 Agent 讨论');return;}
@@ -128,9 +129,9 @@ export class ReadingView extends ItemView {
     body.setText('正在读取…');
     if (parent) {
       parent.children.push(node);
-      const back = header.createEl('button', {text:'返回上层'});
+      const back = iconButton('返回上层','corner-left-up');
       back.addEventListener('click', () => this.focus(parent));
-      const close = header.createEl('button', {text:'收起'});
+      const close = iconButton('收起','chevron-up');
       close.addEventListener('click', () => { this.remove(node); this.focus(parent); });
     }
     const activate = (event: MouseEvent | KeyboardEvent) => {

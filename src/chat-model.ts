@@ -3,7 +3,7 @@ export interface ChatSettings {codexPath:string;model:string;cards:string;}
 export interface ChatContext {path:string;body:string;}
 export type MessageStatus='pending'|'complete'|'interrupted'|'error';
 export interface ChatMessage {id:string;role:'user'|'assistant';text:string;status:MessageStatus;contexts?:ChatContext[];}
-export interface ChatSession {id:string;title:string;messages:ChatMessage[];updatedAt:string;}
+export interface ChatSession {id:string;title:string;messages:ChatMessage[];updatedAt:string;cardPath?:string;}
 export interface AgentState {settings:ChatSettings;sessions:ChatSession[];activeId:string|null;}
 export const defaultAgentState=():AgentState=>({settings:{codexPath:'',model:'',cards:'Cards/Chat'},sessions:[],activeId:null});
 export function validateAgentState(raw:unknown):AgentState {
@@ -11,7 +11,7 @@ export function validateAgentState(raw:unknown):AgentState {
  if(!a || !a.settings || typeof a.settings.codexPath!=='string' || typeof a.settings.model!=='string' || !safePath(a.settings.cards) || !Array.isArray(a.sessions) || a.sessions.length>20 || !(a.activeId===null||typeof a.activeId==='string'))throw Error('聊天配置或会话格式无效');
  const ids=new Set<string>();
  for(const s of a.sessions){
-  if(!s || typeof s.id!=='string'||ids.has(s.id)||typeof s.title!=='string'||typeof s.updatedAt!=='string'||!Array.isArray(s.messages)||s.messages.length>80)throw Error('聊天会话无效');ids.add(s.id);
+  if(!s || typeof s.id!=='string'||ids.has(s.id)||typeof s.title!=='string'||typeof s.updatedAt!=='string'||(s.cardPath!==undefined&&!safePath(s.cardPath))||!Array.isArray(s.messages)||s.messages.length>80)throw Error('聊天会话无效');ids.add(s.id);
   const mids=new Set<string>();
   for(const m of s.messages){
    if(!m||typeof m.id!=='string'||mids.has(m.id)||!['user','assistant'].includes(m.role)||typeof m.text!=='string'||m.text.length>40000||!['pending','complete','interrupted','error'].includes(m.status))throw Error('聊天消息无效');mids.add(m.id);

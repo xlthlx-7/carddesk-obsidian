@@ -33,16 +33,28 @@ export class PathStore {
   } catch(e){this.blocked=true;this.failed(e);}
  }
  async setDraft(raw:EditDraft):Promise<void>{
-  if(this.blocked)throw Error('原保存数据不可写');const draft=validateEditDraft(raw),drafts=this.data.drafts??[];
-  const index=drafts.findIndex(d=>d.id===draft.id);if(index<0){if(drafts.length>=20)throw Error('未保存草稿已达 20 份，请先恢复或放弃旧草稿');drafts.push(draft);}else drafts[index]=draft;
-  this.data.drafts=drafts;await this.flush();
+  if(this.blocked)throw Error('原保存数据不可写');const draft=validateEditDraft(raw);
+  const next=this.queue.then(async()=>{
+   const drafts=clone(this.data.drafts??[]),index=drafts.findIndex(d=>d.id===draft.id);
+   if(index<0){if(drafts.length>=20)throw Error('未保存草稿已达 20 份，请先恢复或放弃旧草稿');drafts.push(draft);}else drafts[index]=draft;
+   await this.write(clone({...this.data,drafts}));this.data.drafts=drafts;
+  });this.queue=next.catch(e=>{this.failed(e);});return next;
  }
- async deleteDraft(id:string):Promise<void>{if(this.blocked)throw Error('原保存数据不可写');this.data.drafts=(this.data.drafts??[]).filter(d=>d.id!==id);await this.flush();}
- async setAgent(agent:AgentState):Promise<void>{if(this.blocked)throw new Error('原保存数据不可写');this.data.agent=validateAgentState(agent);await this.flush();}
+ async deleteDraft(id:string):Promise<void>{
+  if(this.blocked)throw Error('原保存数据不可写');
+  const next=this.queue.then(async()=>{const drafts=(this.data.drafts??[]).filter(d=>d.id!==id);await this.write(clone({...this.data,drafts}));this.data.drafts=drafts;});
+  this.queue=next.catch(e=>{this.failed(e);});return next;
+ }
+ async setAgent(agent:AgentState):Promise<void>{
+  if(this.blocked)throw new Error('原保存数据不可写');const accepted=validateAgentState(agent);
+  // Publish chat state only after its queued disk write succeeds.
+  const next=this.queue.then(async()=>{await this.write(clone({...this.data,agent:accepted}));this.data.agent=accepted;});
+  this.queue=next.catch(e=>{this.failed(e);});return next;
+ }
  update(s:Snapshot):void {if(this.blocked)return;this.data.lastSession=validateSnapshot(s);clearTimeout(this.timer);this.timer=setTimeout(()=>{void this.flush().catch(()=>{});},250);}
  async save(s:Snapshot):Promise<void>{if(this.blocked)throw new Error('原保存数据损坏或版本未知，已阻止覆盖');s=validateSnapshot(s);const i=this.data.paths.findIndex(p=>p.id===s.id);if(i<0)this.data.paths.push(s);else this.data.paths[i]=s;await this.flush();}
  async delete(id:string):Promise<void>{if(this.blocked)throw new Error('原保存数据不可写');this.data.paths=this.data.paths.filter(p=>p.id!==id);await this.flush();}
- async flush():Promise<void>{clearTimeout(this.timer);if(this.blocked)return;const data=clone(this.data);const next=this.queue.then(()=>this.write(data));this.queue=next.catch(e=>{this.failed(e);});return next;}
+ async flush():Promise<void>{clearTimeout(this.timer);if(this.blocked)return;const data=clone(this.data);const next=this.queue.then(()=>{if(this.data.agent)data.agent=clone(this.data.agent);else delete data.agent;if(this.data.drafts)data.drafts=clone(this.data.drafts);else delete data.drafts;return this.write(data);});this.queue=next.catch(e=>{this.failed(e);});return next;}
  rename(oldPath:string,newPath:string):void {
   if(this.blocked)return;
   for(const s of [this.data.lastSession,...this.data.paths])if(s)for(const n of s.nodes)if(n.filePath===oldPath || n.filePath.startsWith(oldPath+'/'))n.filePath=newPath+n.filePath.slice(oldPath.length);

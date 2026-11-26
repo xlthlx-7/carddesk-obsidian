@@ -12,3 +12,17 @@ test('damaged/unknown storage blocks chat writes as well as reading writes',asyn
 test('edit drafts persist alongside chat and snapshots and can be removed without changing either',async()=>{
  let saved;const store=new PathStore(async d=>saved=d,()=>{});store.load({schemaVersion:1,lastSession:snapshot,paths:[snapshot],agent:agent()});const draft={id:'edit',path:'原卡.md',base:'原文',text:'未保存'};await store.setDraft(draft);store.update(snapshot);await store.flush();const restored=new PathStore(async()=>{},()=>{});restored.load(saved);assert.deepEqual(restored.data.drafts,[draft]);assert.equal(restored.data.paths[0].name,'旧路径');assert.equal(restored.data.agent.sessions[0].title,'对话');await store.deleteDraft('edit');assert.deepEqual(saved.drafts,[]);assert.equal(saved.paths.length,1);await assert.rejects(store.setDraft({...draft,path:'../secret.md'}));
 });
+test('failed chat save cannot leak into a queued reading save; accepted chat survives later flushes',async()=>{
+ const writes=[];let rejectWrite;let calls=0;
+ const store=new PathStore(async d=>{calls++;if(calls===1)await new Promise((_,reject)=>rejectWrite=reject);writes.push(d);},()=>{});
+ const original=agent();store.load({schemaVersion:1,lastSession:snapshot,paths:[snapshot],agent:original});const stable=structuredClone(store.data.agent);
+ const changed=structuredClone(stable);changed.sessions.push({...changed.sessions[0],id:'new',messages:[]});changed.activeId='new';
+ const failed=store.setAgent(changed);await new Promise(r=>setImmediate(r));store.update({...snapshot,name:'失败期间的阅读'});const reading=store.flush();rejectWrite(Error('disk'));await assert.rejects(failed);await reading;
+ assert.deepEqual(writes.at(-1).agent,stable);assert.equal(writes.at(-1).lastSession.name,'失败期间的阅读');assert.deepEqual(store.data.agent,stable);
+ const accepted=store.setAgent(changed);const later=store.flush();await accepted;await later;assert.equal(writes.at(-1).agent.activeId,'new');assert.equal(store.data.agent.activeId,'new');
+});
+test('failed draft deletion cannot discard recovery data in a later reading save',async()=>{
+ let fail=false;const writes=[];const store=new PathStore(async d=>{if(fail)throw Error('disk');writes.push(d);},()=>{});
+ const draft={id:'edit',path:'原卡.md',base:'原文',text:'恢复草稿'};await store.setDraft(draft);fail=true;await assert.rejects(store.deleteDraft('edit'));fail=false;store.update(snapshot);await store.flush();assert.deepEqual(writes.at(-1).drafts,[draft]);assert.deepEqual(store.data.drafts,[draft]);
+ const removing=store.deleteDraft('edit');const fresh={...draft,id:'new',text:'新草稿'};const adding=store.setDraft(fresh);const reading=store.flush();await removing;await adding;await reading;assert.deepEqual(writes.at(-1).drafts,[fresh]);
+});

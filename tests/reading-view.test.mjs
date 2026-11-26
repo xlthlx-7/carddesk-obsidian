@@ -15,6 +15,8 @@ export class ItemView extends Component {constructor(leaf){super();this.app=leaf
 export class TFile {}
 globalThis.MockFile=TFile;
 export class Notice {constructor(message){globalThis.notices.push(message);}}
+export const setIcon=(el,icon)=>{el.dataset.icon=icon;};
+export const setTooltip=(el,label)=>{el.title=label;};
 export const getLinkpath=s=>s.split('#')[0];
 export class MarkdownRenderer {static async render(app,md,el,source,component){
  app.renders.push(source);app.markdown=md;
@@ -89,7 +91,7 @@ test('P0 presentation: no path toolbar or automatic root focus, child focus and 
  const {view,files,click}=setup();await view.openRoot(files.A);
  assert.equal(view.contentEl.querySelector('nav'),null);assert.notEqual(document.activeElement,view.root.section);
  click(view.root,'B');await settle();assert.equal(document.activeElement,view.root.children[0].section);
- const buttons=[...view.root.children[0].section.querySelectorAll('button')];buttons.find(b=>b.textContent==='返回上层').click();
+ const buttons=[...view.root.children[0].section.querySelectorAll('button')];buttons.find(b=>b.getAttribute('aria-label')==='返回上层').click();
  assert.equal(document.activeElement,view.root.section);assert.equal(view.count,2);await view.onClose();
 });
 test('round-trip preserves two shared instances, order and focus; missing parent retains descendants',async()=>{
@@ -130,7 +132,7 @@ test('P4 two views keep independent trees and closing one leaves the other usabl
 
 test('per-card actions target the clicked card even when another branch owns focus',async()=>{
  const {view,files,app,click}=setup();const discussed=[];view.actions={discuss:async(f,choices)=>discussed.push({path:f.path,choices})};await view.openRoot(files.A);click(view.root,'B');await settle();click(view.root,'C');await settle();assert.equal(view.snapshot().nodes.find(n=>n.nodeId===view.snapshot().activeNodeId).filePath,files.C.path);
- const b=view.root.children[0];const buttons=[...b.section.querySelectorAll(':scope > .carddesk-heading > button')];buttons.find(v=>v.textContent==='与 Agent 讨论').click();buttons.find(v=>v.textContent==='编辑').click();await settle();assert.ok(b.editor);assert.equal(b.section.querySelector('textarea').value,'D');assert.equal(discussed[0].path,files.B.path);assert.deepEqual(discussed[0].choices,[files.A.path,files.B.path,files.C.path]);assert.equal(view.count,3);assert.equal(view.contentEl.querySelector('nav'),null);assert.ok(!buttons.some(b=>b.textContent==='原生打开'));await view.onClose();
+ const b=view.root.children[0];const buttons=[...b.section.querySelectorAll(':scope > .carddesk-heading > button')];buttons.find(v=>v.getAttribute('aria-label')==='与 Agent 讨论').click();buttons.find(v=>v.getAttribute('aria-label')==='编辑').click();await settle();assert.ok(b.editor);assert.equal(b.section.querySelector('textarea').value,'D');assert.equal(discussed[0].path,files.B.path);assert.deepEqual(discussed[0].choices,[files.A.path,files.B.path,files.C.path]);assert.equal(view.count,3);assert.equal(view.contentEl.querySelector('nav'),null);assert.ok(!buttons.some(b=>b.textContent==='原生打开'));await view.onClose();
 });
 test('inline edit exposes full metadata without opening another tab; reading still filters metadata',async()=>{
  const {view,files,app}=setup();const text='---\ncard_id: stable\nsources: [source]\n---\n# 标题\n> Sources: 来源\n> Raw: 原文.md\n> Updated: 2026-11-25\n\n> 正常引用\n正文';app.vault.cachedRead=app.vault.read=async()=>text;await view.openRoot(files.A);assert.ok(!app.markdown.includes('card_id'));assert.ok(app.markdown.includes('> 正常引用'));view.root.section.querySelector('button').click();await settle();assert.equal(view.root.section.querySelector('textarea').value,text);assert.equal(view.root.body.hidden,true);assert.equal(view.count,1);assert.equal(app.native.length,0);await view.onClose();
@@ -152,3 +154,12 @@ test('editing card_id on the same live file refreshes its identity without a mis
 });
 
 test('discussion waits for saved file content and recovery focuses an already open editor',async()=>{const {view,files}=setup();let calls=0;view.actions={discuss:async()=>calls++};await view.openRoot(files.A);await view.editInline(view.root);view.root.section.querySelectorAll('button')[1].click();assert.equal(calls,0);assert.ok(notices.some(n=>n.includes('先保存或取消')));assert.equal(view.focusEdit(view.root.editor.id),true);assert.equal(view.focusEdit('missing'),false);await view.onClose();});
+
+test('card header uses named icons; native editor saves the clicked card and preserves reading branches',async()=>{
+ const {view,files,app,click}=setup();await view.openRoot(files.A);click(view.root,'B');await settle();const child=view.root.children[0];
+ const buttons=[...child.section.querySelectorAll(':scope > .carddesk-heading > button')];assert.deepEqual(buttons.map(b=>b.getAttribute('aria-label')),['编辑','与 Agent 讨论','返回上层','收起']);assert.ok(buttons.every(b=>!b.textContent&&b.title&&b.dataset.icon));
+ await view.editInline(child);child.section.querySelector('textarea').value='原生打开前保存';await child.editor.openNative();assert.equal(await app.vault.read(files.B),'原生打开前保存');assert.deepEqual(app.native,[['P0/B.md','','tab',{state:{mode:'source'}}]]);assert.equal(child.editor,undefined);assert.equal(view.root.children[0],child);assert.equal(view.count,2);await view.onClose();
+});
+test('native open refuses a stale inline draft; disk and unsaved text remain recoverable',async()=>{
+ const {view,files,app}=setup();const drafts=new Map();view.actions={discuss:async()=>{},persistDraft:async d=>drafts.set(d.id,{...d}),discardDraft:async id=>drafts.delete(id)};await view.openRoot(files.A);await view.editInline(view.root);view.root.section.querySelector('textarea').value='未保存草稿';await app.vault.process(files.A,()=> '外部修改');await view.root.editor.openNative();assert.equal(app.native.length,0);assert.equal(await app.vault.read(files.A),'外部修改');assert.ok(view.root.editor);assert.equal([...drafts.values()][0].text,'未保存草稿');await view.onClose();
+});

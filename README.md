@@ -1,8 +1,8 @@
 # 接页 Carddesk · Obsidian 插件
 
-当前开发版 **0.4.0**：在卡片中渐进阅读，向 Codex 提问，再把有价值的回答整理为关联卡片。保持原有嵌套布局、内链原地展开、多分支、收起与返回上层。
+**0.4.0 预发布版**：在卡片中渐进阅读，向 Codex 提问，再把有价值的回答整理为关联卡片。保持原有嵌套布局、内链原地展开、多分支、收起与返回上层。
 
-[聊天与转卡操作说明](docs/CHAT_GUIDE.md) · [安装说明](docs/INSTALL.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
+[下载 0.4.0](https://github.com/xlthlx-7/carddesk-obsidian/releases/tag/v0.4.0) · [聊天与转卡操作说明](docs/CHAT_GUIDE.md) · [安装说明](docs/INSTALL.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
 
 ## 构建与安装
 
@@ -30,7 +30,7 @@ python3 scripts/package.py
 
 ## Codex 聊天与关联卡片
 
-每张卡片右上角可直接“编辑”或“与 Agent 讨论”。编辑直接在卡片内显示完整 Markdown 文本，提供保存、取消和草稿恢复，阅读隐藏 sources/raw/updated 等属性；旧卡可通过命令预览、备份后整理。
+每张卡片右上角可直接“编辑”或“与 Agent 讨论”。编辑直接在卡片内显示完整 Markdown 文本，提供完成保存、取消、保存后原生打开和草稿恢复，阅读隐藏 sources/raw/updated 等属性；旧卡可通过命令预览、备份后整理。
 
 在设置 → 接页 Carddesk 填写本机已登录 Codex CLI 的绝对路径，配置新卡目录并保存。从笔记或接页执行“向 Agent 提问当前卡片”，在右侧聊天。默认只发送当前卡，可明确增加已展开卡片；本会话历史也会发送至模型服务。
 
@@ -50,6 +50,6 @@ python3 scripts/package.py
 
 阅读状态、聊天和设置位于 `.obsidian/plugins/carddesk/data.json`。升级前备份；0.3.4 的阅读状态可继续读取。降回 0.3.4 会在保存时移除聊天字段，回退前另存该文件。卸载插件不删除笔记，但删除插件目录前应备份 data.json。
 
-项目从 [Carddesk](https://github.com/xlthlx-7/carddesk) 拆出，插件 ID 仍为 carddesk，不能在同一库同时安装两份。[来源记录](docs/PROVENANCE.md)。0.3.4 Release 保留，尚未发布 0.4.0 Release。
+项目从 [Carddesk](https://github.com/xlthlx-7/carddesk) 拆出，插件 ID 仍为 carddesk，不能在同一库同时安装两份。[来源记录](docs/PROVENANCE.md)。0.3.4 Release 保留；0.4.0 按预发布版交付，不自动合并 main。
 
 [开发计划](docs/PLAN_0.4.0.md) · [待办](docs/TODO.md) · [测试决策日志](docs/TEST_OPTIMIZATION_LOG.md) · [开发版验证](docs/VALIDATION_0.4.0.md)

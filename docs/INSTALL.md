@@ -40,10 +40,18 @@ python3 scripts/package.py
 
 示例为原创说明材料。`p3-invalid-path.json` 与 `p3-missing-file.json` 故意用于失败测试；有效示例 `p3-example.json` 应为 0 错误、0 警告。
 
-## 0.4.0 开发版：聊天与转卡
+## 0.4.0：聊天与转卡
 
 构建输出的版本为 0.4.0；现有 0.3.4 Release 保留。设置 → 接页 Carddesk 中填写已登录的 Codex CLI 绝对路径，再从当前卡片执行“向 Agent 提问当前卡片”。聊天与整理会调用模型服务，并消耗账户额度；选中的正文和会话历史会被发送。
 
 完整流程、兼容边界和失败恢复见 [聊天与转卡说明](CHAT_GUIDE.md)。导出 Agent 说明仍是独立文件工作流，不会启动批量外部任务。
 
 0.4.0 聊天和配置保存在 data.json。降回 0.3.4 前另存该文件，旧版本保存时会移除聊天字段。
+
+## 使用 0.4.0 发布包
+
+在 GitHub v0.4.0 Release 下载 `carddesk-plugin-0.4.0.zip`，解压后把 `carddesk` 文件夹放入 Vault 的 `.obsidian/plugins/`。已有插件先禁用，只替换 main.js、manifest.json、styles.css，保留 data.json；更新后重新启用或正常退出重启。
+
+首次试用建议新建独立库，将 `carddesk-example-vault-0.4.0.zip` 解压到库根目录。打开 `Acceptance/入口.md` 执行渐进阅读，或从 `P0/A.md` 检查多分支。示例包包含原创笔记，不包含已生成的回答、用户状态或 Codex 登录。核对下载文件可使用同一 Release 的 SHA256SUMS.txt。
+
+卡片右上角铅笔进入原地编辑，对话图标发起讨论，子卡的折返箭头返回上层、向上折叠图标收起。悬停显示名称。聊天完整操作见随包 CHAT_GUIDE.md；在 GitHub 仓库阅读本安装说明时，相对文档链接有效。

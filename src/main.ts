@@ -1,7 +1,7 @@
 import {previewMetadataMigration} from './metadata-migration';
 import {ChatView, CHAT_VIEW_TYPE} from './chat-view';
 import {CodexAgent} from './codex-agent';
-import {AgentState, defaultAgentState} from './chat-model';
+import {AgentState, defaultAgentState, validateAgentState} from './chat-model';
 import {ChatSettingsTab} from './chat-settings';
 import {MarkdownView, Modal, Notice, Plugin, TFile} from 'obsidian';
 import {ReadingView, VIEW_TYPE} from './reading-view';
@@ -15,14 +15,14 @@ export default class CarddeskPlugin extends Plugin {
  async onload():Promise<void>{
   this.store=new PathStore(data=>this.saveData(data),error=>new Notice('接页保存失败（原数据未主动覆盖）：'+String(error)));
   try{this.store.load(await this.loadData());}catch(error){this.store.blocked=true;new Notice('接页无法读取保存数据：'+String(error));}
-  this.agent=this.store.data.agent??defaultAgentState();
+  this.agent=validateAgentState(this.store.data.agent??defaultAgentState());
   const persist=()=>this.store.setAgent(this.agent);
   this.registerView(CHAT_VIEW_TYPE,leaf=>new ChatView(leaf,()=>this.agent,persist,new CodexAgent()));
-  this.addSettingTab(new ChatSettingsTab(this.app,this,()=>this.agent.settings,async settings=>{this.agent.settings=settings;await persist();}));
+  this.addSettingTab(new ChatSettingsTab(this.app,this,()=>this.agent.settings,async settings=>{const previous=this.agent.settings;this.agent.settings=settings;try{await persist();}catch(e){this.agent.settings=previous;throw e;}}));
   const openChat=async(primary='',choices:string[]=[])=>{
    let leaf=this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
    if(!leaf){leaf=this.app.workspace.getRightLeaf(false)!;if(!leaf)throw Error('无法打开聊天侧栏');await leaf.setViewState({type:CHAT_VIEW_TYPE,active:true});}
-   if(primary&&(leaf.view instanceof ChatView))leaf.view.setContext(primary,choices);
+   if(primary&&(leaf.view instanceof ChatView))await leaf.view.setContext(primary,choices);
    await this.app.workspace.revealLeaf(leaf);
   };
   this.addCommand({id:'open-agent-chat',name:'打开 Agent 聊天',callback:()=>{void openChat().catch(e=>new Notice(String(e)));}});

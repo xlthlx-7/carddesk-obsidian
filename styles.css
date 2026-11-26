@@ -1,7 +1,7 @@
 .carddesk-reading { overflow:auto; padding:var(--size-4-4); }
 .carddesk-reading .carddesk-hint { color:var(--text-muted); font-size:var(--font-ui-small); }
 .carddesk-reading .carddesk-heading { display:flex; align-items:center; flex-wrap:wrap; gap:var(--size-4-2); }
-.carddesk-reading .carddesk-heading h2,.carddesk-reading .carddesk-heading h3 { flex:1; margin:.6em 0; }
+.carddesk-reading .carddesk-heading h2,.carddesk-reading .carddesk-heading h3 { flex:1; min-width:0; overflow-wrap:anywhere; margin:.6em 0; }
 .carddesk-reading .carddesk-branch { min-width:0; padding:var(--size-4-3); border:1px solid var(--background-modifier-border); border-radius:var(--radius-m); }
 .carddesk-reading .carddesk-branch:focus { outline:2px solid var(--interactive-accent); outline-offset:2px; }
 .carddesk-reading .carddesk-body { overflow-wrap:anywhere; }
@@ -12,15 +12,63 @@
 @media(max-width:650px) { .carddesk-reading .carddesk-children { grid-template-columns:minmax(0,1fr); } }
 
 /* Chat lives in its own sidebar; progressive reading styles above remain unchanged. */
-.carddesk-chat {padding:16px;overflow:auto;}
-.carddesk-chat textarea {width:100%;min-height:80px;margin:8px 0;}
-.carddesk-chat pre {white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-text);}
-.carddesk-chat-controls {display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
-.carddesk-chat-message {padding:12px 0;border-bottom:1px solid var(--background-modifier-border);}
-.carddesk-chat-message small,.carddesk-chat-muted {color:var(--text-muted);}
-.carddesk-chat-status {color:var(--text-accent);white-space:pre-wrap;}
+.carddesk-chat {contain:inline-size;box-sizing:border-box;width:100%;min-width:0;display:flex;flex-direction:column;height:100%;min-height:0;padding:0;overflow:hidden;font-family:var(--font-interface);font-size:var(--font-ui-medium);}
+.carddesk-chat-header {flex:none;padding:14px 16px 10px;border-bottom:1px solid var(--background-modifier-border);}
+.carddesk-chat-topline {display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.carddesk-chat-topline h2 {flex:1;min-width:0;margin:0;font-size:var(--font-ui-medium);font-weight:600;}
+.carddesk-chat-session {width:100%;max-width:100%;text-overflow:ellipsis;}
+.carddesk-chat-target {display:flex;gap:8px;align-items:baseline;margin-top:10px;min-width:0;}
+.carddesk-chat-target strong {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.carddesk-chat-target span {flex-shrink:0;font-size:var(--font-ui-small);}
+.carddesk-chat-more {position:relative;}
+.carddesk-chat-more > button {color:var(--text-muted);}
+.carddesk-chat-menu {position:absolute;right:0;top:100%;z-index:3;width:min(260px,70vw);padding:12px;background:var(--background-primary);border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);box-shadow:var(--shadow-s);}
+.carddesk-chat-menu p {margin:0 0 12px;line-height:1.6;}
+.carddesk-chat-danger {color:var(--text-error);}
+.carddesk-chat-messages {flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:18px 16px;overscroll-behavior:contain;scrollbar-gutter:stable;}
+.carddesk-chat-message {max-width:72ch;margin:0 auto 26px;overflow-wrap:anywhere;}
+.carddesk-chat-author {display:block;color:var(--text-muted);font-size:var(--font-ui-small);margin-bottom:8px;}
+.carddesk-chat-user .carddesk-chat-message-body {background:var(--background-secondary);padding:10px 12px;border-radius:var(--radius-m);}
+.carddesk-chat-message-body {font-family:var(--font-text);font-size:var(--font-text-size);line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;}
+.carddesk-chat-message-body.markdown-rendered {white-space:normal;}
+.carddesk-chat-message-body > :first-child {margin-top:0;}
+.carddesk-chat-message-body h1,.carddesk-chat-message-body h2,.carddesk-chat-message-body h3 {font-size:1.08em;line-height:1.5;margin:1.3em 0 .5em;}
+.carddesk-chat-message-body p,.carddesk-chat-message-body ul,.carddesk-chat-message-body ol {margin:.6em 0;}
+.carddesk-chat-message-body pre {overflow-x:auto;white-space:pre;font-size:.9em;}
+.carddesk-chat-message-body table {display:block;max-width:100%;overflow:auto;}
+.carddesk-chat-attached {font-size:var(--font-ui-smaller);color:var(--text-muted);margin:0 0 8px;}
+.carddesk-chat-attached summary {cursor:pointer;overflow-wrap:anywhere;}
+.carddesk-chat-attached small {display:block;overflow-wrap:anywhere;}
+.carddesk-chat-card-action {margin-top:10px;font-size:var(--font-ui-small);}
+.carddesk-chat-composer {flex:none;padding:10px 16px 12px;border-top:1px solid var(--background-modifier-border);background:var(--background-primary);max-height:55%;overflow-y:auto;}
+.carddesk-chat-context {font-size:var(--font-ui-small);margin-bottom:8px;}
+.carddesk-chat-context > button {cursor:pointer;color:var(--text-muted);}
+.carddesk-chat-context-content {max-height:180px;overflow:auto;}
+.carddesk-chat-context-row {display:flex;align-items:center;gap:6px;padding:6px 0;overflow-wrap:anywhere;}
+.carddesk-chat-context-row input {flex:none;}
+.carddesk-chat-preview pre {white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-text);font-size:var(--font-ui-small);}
+.carddesk-chat-composer textarea {display:block;width:100%;min-height:72px;max-height:160px;resize:vertical;line-height:1.6;margin:0;padding:10px;}
+.carddesk-chat-compose-actions {display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.carddesk-chat-compose-actions small {flex:1;font-size:var(--font-ui-smaller);}
+.carddesk-chat-disclosure {display:block;color:var(--text-faint);font-size:var(--font-ui-smaller);margin-top:8px;}
+.carddesk-chat-status {color:var(--text-error);white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;font-size:var(--font-ui-small);}
+.carddesk-chat-status:empty {display:none;}
+.carddesk-chat-muted {color:var(--text-muted);}
+.carddesk-chat-empty {max-width:36ch;margin:32px auto;color:var(--text-muted);line-height:1.7;}
+.carddesk-chat-empty h3 {font-size:1.1em;color:var(--text-normal);}
+.carddesk-chat-empty button {display:block;height:auto;white-space:normal;text-align:left;margin:8px 0;padding:8px 10px;}
+.carddesk-chat button:focus-visible,.carddesk-chat summary:focus-visible {outline:2px solid var(--interactive-accent);outline-offset:2px;}
 
-.carddesk-reading .carddesk-inline-editor textarea {width:100%;min-height:18rem;resize:vertical;font-family:var(--font-monospace);line-height:1.6;tab-size:2;}
-.carddesk-reading .carddesk-editor-actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.carddesk-reading .carddesk-inline-editor textarea {width:100%;min-height:16rem;resize:vertical;font-family:var(--font-text);font-size:var(--font-text-size);line-height:1.7;tab-size:2;padding:12px;border-color:var(--background-modifier-border);box-shadow:none;}
+.carddesk-reading .carddesk-editor-actions {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0;}
 .carddesk-reading .carddesk-inline-editor p {color:var(--text-muted);font-size:var(--font-ui-small);}
 .carddesk-reading .carddesk-body[hidden] {display:none;}
+
+.carddesk-chat [hidden] {display:none;}
+
+.carddesk-reading .carddesk-card-action {flex:none;padding:6px;width:30px;height:30px;box-shadow:none;background:transparent;border:none;color:var(--text-muted);}
+.carddesk-reading .carddesk-card-action:hover {background:var(--background-modifier-hover);color:var(--text-normal);}
+.carddesk-reading .carddesk-card-action svg {width:17px;height:17px;}
+.carddesk-reading .carddesk-card-action:focus-visible {outline:2px solid var(--interactive-accent);outline-offset:2px;}
+.carddesk-reading .carddesk-editor-label {flex:1;min-width:6em;color:var(--text-muted);font-size:var(--font-ui-small);}
+.carddesk-reading .carddesk-editor-hint {display:block;color:var(--text-muted);font-size:var(--font-ui-smaller);margin-top:8px;}

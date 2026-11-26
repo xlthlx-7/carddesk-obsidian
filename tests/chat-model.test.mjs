@@ -12,3 +12,7 @@ test('rejects malformed persisted chat, unsafe directory, duplicate message ids,
  for(const mutate of [s=>s.settings.cards='../Cards',s=>s.sessions=[session(),session()],s=>{const v=session();v.messages[1].id='u';s.sessions=[v];}]){const s=defaultAgentState();mutate(s);assert.throws(()=>validateAgentState(s));}
  assert.deepEqual(parseDraft('```json\n{"title":"标题","body":"解释","linkText":"继续理解"}\n```'),{title:'标题',body:'解释',linkText:'继续理解'});assert.throws(()=>parseDraft('{"title":"x"}'));
 });
+test('optional discussion card anchor persists; unsafe anchors are rejected',()=>{
+ const state=defaultAgentState();state.sessions=[session()];state.sessions[0].cardPath='卡片.md';assert.equal(validateAgentState(state).sessions[0].cardPath,'卡片.md');
+ state.sessions[0].cardPath='../private.md';assert.throws(()=>validateAgentState(state));
+});
