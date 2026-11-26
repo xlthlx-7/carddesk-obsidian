@@ -55,3 +55,7 @@ python3 scripts/package.py
 首次试用建议新建独立库，将 `carddesk-example-vault-0.4.0.zip` 解压到库根目录。打开 `Acceptance/入口.md` 执行渐进阅读，或从 `P0/A.md` 检查多分支。示例包包含原创笔记，不包含已生成的回答、用户状态或 Codex 登录。核对下载文件可使用同一 Release 的 SHA256SUMS.txt。
 
 卡片右上角铅笔进入原地编辑，对话图标发起讨论，子卡的折返箭头返回上层、向上折叠图标收起。悬停显示名称。聊天完整操作见随包 CHAT_GUIDE.md；在 GitHub 仓库阅读本安装说明时，相对文档链接有效。
+
+## 0.5.0 开发构建
+
+当前开发分支构建输出 `carddesk-plugin-0.5.0.zip` 和原创示例库；GitHub 已发布版本仍为 0.4.0。安装方法相同，升级前先备份程序和 data.json，只替换三个程序文件。任务及原文快照在 Vault 内，回退旧插件不删除它们，但 0.4.0 无法继续内置任务；恢复任务需要 0.5.0。完整操作见 [内置拆卡](MATERIAL_TASK_GUIDE.md)。

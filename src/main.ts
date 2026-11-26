@@ -1,3 +1,6 @@
+import {CardTaskStore} from './card-task-store';
+import {CardTaskEngine} from './card-task-engine';
+import {CardTaskModal} from './card-task-modal';
 import {previewMetadataMigration} from './metadata-migration';
 import {ChatView, CHAT_VIEW_TYPE} from './chat-view';
 import {CodexAgent} from './codex-agent';
@@ -12,6 +15,7 @@ import {ask, Choose} from './path-dialogs';
 export default class CarddeskPlugin extends Plugin {
  private store!:PathStore;
  private agent!:AgentState;
+ private tasks!:CardTaskEngine;
  async onload():Promise<void>{
   this.store=new PathStore(data=>this.saveData(data),error=>new Notice('接页保存失败（原数据未主动覆盖）：'+String(error)));
   try{this.store.load(await this.loadData());}catch(error){this.store.blocked=true;new Notice('接页无法读取保存数据：'+String(error));}
@@ -38,6 +42,17 @@ export default class CarddeskPlugin extends Plugin {
    },{discuss:(file,choices)=>openChat(file.path,choices),persistDraft:d=>this.store.setDraft(d),discardDraft:id=>this.store.deleteDraft(id)});return view;
   });
   const safe=(work:()=>Promise<unknown>)=>{void work().catch(error=>new Notice('接页：'+String(error)));};
+  this.tasks=new CardTaskEngine(this.app,new CardTaskStore(this.app),new CodexAgent(),()=>this.agent.settings);
+  let taskModal:CardTaskModal|null=null;
+  const openTasks=(file?:TFile)=>{if(taskModal){new Notice('知识整理窗口已打开，请先完成或关闭当前窗口');return;}taskModal=new CardTaskModal(this.app,this.tasks,async f=>{await (await this.newView()).openRoot(f);},()=>{taskModal=null;},file);taskModal.open();};
+  this.addCommand({id:'open-card-tasks',name:'知识整理任务（拆卡）',callback:()=>openTasks()});
+  this.addCommand({id:'split-current-note',name:'拆成知识卡片',checkCallback:checking=>{
+   const reading=this.app.workspace.getActiveViewOfType(ReadingView)?.snapshot();const path=reading?.nodes.find(n=>n.nodeId===reading.activeNodeId)?.filePath;
+   const file=path?this.app.vault.getAbstractFileByPath(path):this.app.workspace.getActiveViewOfType(MarkdownView)?.file;
+   if(!(file instanceof TFile)||!['md','txt'].includes(file.extension))return false;if(!checking)openTasks(file);return true;
+  }});
+  this.registerEvent(this.app.workspace.on('file-menu',(menu,file)=>{if(file instanceof TFile&&['md','txt'].includes(file.extension))menu.addItem(item=>item.setTitle('拆成知识卡片').setIcon('layers').onClick(()=>openTasks(file)));}));
+
   this.addCommand({id:'open-progressive-reading',name:'以接页渐进阅读当前笔记',checkCallback:checking=>{
    const file=this.app.workspace.getActiveViewOfType(MarkdownView)?.file;if(!file)return false;
    if(!checking)safe(async()=>{const view=await this.newView();await view.openRoot(file);});return true;
@@ -102,5 +117,5 @@ export default class CarddeskPlugin extends Plugin {
  }
  private async newView():Promise<ReadingView>{const leaf=this.app.workspace.getLeaf('tab');await leaf.setViewState({type:VIEW_TYPE,active:true});return leaf.view as ReadingView;}
  private async openSnapshot(s:Snapshot):Promise<void>{await (await this.newView()).restore(s);}
- onunload():void {this.app.workspace.detachLeavesOfType(CHAT_VIEW_TYPE);this.app.workspace.detachLeavesOfType(VIEW_TYPE);void this.store.flush().catch(()=>{});}
+ onunload():void {this.tasks?.stopAll();this.app.workspace.detachLeavesOfType(CHAT_VIEW_TYPE);this.app.workspace.detachLeavesOfType(VIEW_TYPE);void this.store.flush().catch(()=>{});}
 }
